@@ -64,7 +64,7 @@ python -m unittest discover -s tests -v
 2. 저장소의 **Settings → Secrets and variables → Actions**에서 `DATA_GO_KR_SERVICE_KEY`라는 Repository secret을 만듭니다.
 3. **Actions → Daily G2B snapshot → Run workflow**로 첫 실행을 확인합니다.
 
-워크플로는 매일 한국시간 00:25에 전날 기록을 수집합니다. 키는 요청에만 사용되고 로그나 스냅샷에 기록되지 않습니다.
+워크플로는 매일 한국시간 09:30에 전날 기록을 수집합니다. 키는 요청에만 사용되고 로그나 스냅샷에 기록되지 않습니다.
 
 ## 현재 범위
 
