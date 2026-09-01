@@ -117,6 +117,21 @@ class CollectorTests(unittest.TestCase):
                 {"schemaVersion": 1},
             )
 
+    def test_valid_zero_day_writes_an_empty_snapshot(self) -> None:
+        def fetcher(url: str) -> dict[str, object]:
+            return response([], 0)
+
+        client = G2BClient("key", fetcher=fetcher)
+        records, counts = collect_snapshot(client, date(2026, 9, 6))
+
+        self.assertEqual(records, [])
+        self.assertEqual(counts, {"registered": 0, "changed": 0})
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "2026-09-06.jsonl"
+            write_snapshot(records, path)
+            self.assertTrue(path.exists())
+            self.assertEqual(path.read_bytes(), b"")
+
 
 if __name__ == "__main__":
     unittest.main()

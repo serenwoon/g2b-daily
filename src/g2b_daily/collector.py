@@ -69,11 +69,6 @@ def collect_snapshot(
             merged[key] = item
             observed_via.setdefault(key, set()).add(label)
 
-    if sum(counts.values()) == 0:
-        raise CollectionError(
-            "both registered and changed queries returned zero rows; snapshot was not written"
-        )
-
     captured = (collected_at or datetime.now(KST)).astimezone(KST).isoformat(
         timespec="seconds"
     )
