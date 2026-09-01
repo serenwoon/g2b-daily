@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "g2b-daily"
+version = "0.1.0"
+description = "Daily metadata snapshots of public G2B service bid notices"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "serenwoon" }]
+classifiers = [
+  "Programming Language :: Python :: 3",
+]
+
+[project.scripts]
+g2b-daily = "g2b_daily.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
