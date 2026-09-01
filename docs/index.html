@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="나라장터 용역 입찰공고의 일별 공개 스냅샷을 살펴보는 중립 대시보드" />
+    <title>G2B Daily — 용역 입찰공고 스냅샷</title>
+    <link rel="preconnect" href="https://api.github.com" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <nav class="top-nav" aria-label="외부 링크">
+          <a class="brand" href="./" aria-label="G2B Daily 홈">
+            <span class="brand-mark" aria-hidden="true">G</span>
+            <span>G2B Daily</span>
+          </a>
+          <div class="nav-links">
+            <a href="https://github.com/serenwoon/g2b-daily" target="_blank" rel="noreferrer">GitHub 저장소</a>
+            <a href="https://github.com/serenwoon/g2b-daily/actions" target="_blank" rel="noreferrer">수집 기록</a>
+          </div>
+        </nav>
+
+        <div class="hero-copy">
+          <p class="eyebrow">PUBLIC SNAPSHOT VIEW</p>
+          <div class="hero-title-row">
+            <h1>매일 쌓이는<br />나라장터 용역 공고</h1>
+            <span class="boundary-chip">전체 공고 · 판정 없음</span>
+          </div>
+          <p class="hero-description">
+            조달청 공개 API에서 수집한 용역 입찰공고 메타데이터를 날짜별로 보여줍니다.
+            특정 기관이나 품명으로 거르지 않으며, 추천이나 적합도도 계산하지 않습니다.
+          </p>
+          <div class="snapshot-line" aria-live="polite">
+            <span class="pulse-dot" aria-hidden="true"></span>
+            <span id="snapshot-meta">최신 스냅샷을 불러오는 중입니다</span>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section class="metrics" aria-label="공고 상태 요약">
+          <article class="metric-card metric-primary">
+            <span>전체 공고</span>
+            <strong id="metric-total">—</strong>
+          </article>
+          <article class="metric-card">
+            <span>등록공고</span>
+            <strong id="metric-registered">—</strong>
+          </article>
+          <article class="metric-card">
+            <span>변경공고</span>
+            <strong id="metric-changed">—</strong>
+          </article>
+          <article class="metric-card">
+            <span>취소공고</span>
+            <strong id="metric-cancelled">—</strong>
+          </article>
+          <article class="metric-card">
+            <span>재공고</span>
+            <strong id="metric-reissued">—</strong>
+          </article>
+        </section>
+
+        <section class="trend-panel" aria-labelledby="trend-title">
+          <div>
+            <p class="section-kicker">DAILY ARCHIVE</p>
+            <h2 id="trend-title">최근 스냅샷 규모</h2>
+          </div>
+          <div id="trend-chart" class="trend-chart" role="img" aria-label="최근 날짜별 공고 건수">
+            <span class="muted">추세 데이터를 불러오는 중입니다</span>
+          </div>
+        </section>
+
+        <section class="notices" aria-labelledby="notice-title">
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">NOTICE EXPLORER</p>
+              <h2 id="notice-title">공고 살펴보기</h2>
+            </div>
+            <p id="result-count" class="result-count">—</p>
+          </div>
+
+          <div class="controls">
+            <label class="search-field">
+              <span>공고명·기관·공고번호 검색</span>
+              <input id="search-input" type="search" placeholder="검색어를 입력하세요" autocomplete="off" />
+            </label>
+            <label>
+              <span>공고 상태</span>
+              <select id="status-filter">
+                <option value="">전체 상태</option>
+              </select>
+            </label>
+            <label>
+              <span>정렬</span>
+              <select id="sort-order">
+                <option value="recent">등록 최신순</option>
+                <option value="deadline">마감 빠른순</option>
+                <option value="name">공고명순</option>
+              </select>
+            </label>
+            <label class="file-button">
+              <span>JSONL 직접 열기</span>
+              <input id="file-input" type="file" accept=".jsonl,application/json,text/plain" />
+            </label>
+          </div>
+
+          <div id="error-panel" class="error-panel" hidden>
+            <strong>데이터를 불러오지 못했습니다.</strong>
+            <span id="error-message"></span>
+            <button id="retry-button" type="button">다시 시도</button>
+          </div>
+
+          <div id="notice-list" class="notice-list" aria-live="polite">
+            <div class="loading-card">최신 공고를 정리하고 있습니다…</div>
+          </div>
+          <button id="load-more" class="load-more" type="button" hidden>더 보기</button>
+        </section>
+
+        <aside class="boundary-note">
+          <span class="boundary-icon" aria-hidden="true">i</span>
+          <div>
+            <strong>공개 경계</strong>
+            <p>첨부파일과 첨부 URL은 저장하지 않습니다. 빈 값은 API 응답 필드가 비어 있었다는 뜻이며, 이 화면은 사실을 정리할 뿐 사업 적합성을 판단하지 않습니다.</p>
+          </div>
+        </aside>
+      </main>
+
+      <footer>
+        <span>Source: 조달청 나라장터 입찰공고정보서비스</span>
+        <span>Updated daily at 09:30 KST</span>
+      </footer>
+    </div>
+  </body>
+</html>
