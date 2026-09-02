@@ -22,6 +22,25 @@ class CollectionError(RuntimeError):
 JsonFetcher = Callable[[str], Mapping[str, Any]]
 
 
+def _reason_text(reason: object, timeout: int) -> str:
+    """Describe why a request failed, without echoing the request URL.
+
+    The URL carries the service key, so it must never reach a log line. The
+    reason alone is enough to tell a timeout from a DNS miss from a TLS
+    handshake failure, which is the distinction a red daily run needs.
+    """
+    if reason is None:
+        return "no reason given"
+    if isinstance(reason, TimeoutError):
+        return f"connection timed out after {timeout}s"
+    if isinstance(reason, BaseException):
+        detail = str(reason).strip()
+        name = type(reason).__name__
+        return f"{name}: {detail}" if detail else name
+    detail = str(reason).strip()
+    return detail or "no reason given"
+
+
 class G2BClient:
     def __init__(
         self,
@@ -116,9 +135,13 @@ class G2BClient:
             with urlopen(request, timeout=self.timeout) as response:
                 raw = response.read()
         except HTTPError as exc:
-            raise CollectionError(f"data.go.kr returned HTTP {exc.code}") from exc
+            raise CollectionError(
+                f"data.go.kr returned HTTP {exc.code} ({_reason_text(exc.reason, self.timeout)})"
+            ) from exc
         except URLError as exc:
-            raise CollectionError("data.go.kr request failed") from exc
+            raise CollectionError(
+                f"data.go.kr request failed ({_reason_text(exc.reason, self.timeout)})"
+            ) from exc
 
         try:
             payload = json.loads(raw.decode("utf-8-sig"))
