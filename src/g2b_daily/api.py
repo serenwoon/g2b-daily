@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 import math
+import sys
+import time
 from collections.abc import Callable, Mapping
+from http.client import HTTPException
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import unquote, urlencode
@@ -17,6 +20,16 @@ BASE_URL = (
 
 class CollectionError(RuntimeError):
     """Raised when a complete, trustworthy collection cannot be produced."""
+
+
+class TransientCollectionError(CollectionError):
+    """A failure that asking again may fix: a stall, a dropped connection, a 5xx."""
+
+
+# Seconds to wait before each new try of a request that failed transiently.
+# Two waits means three attempts. A day is ten or more requests, and one of
+# them stalling used to cost the whole day.
+DEFAULT_RETRY_WAITS: tuple[float, ...] = (5.0, 15.0)
 
 
 JsonFetcher = Callable[[str], Mapping[str, Any]]
@@ -49,6 +62,8 @@ class G2BClient:
         page_size: int = 100,
         timeout: int = 30,
         fetcher: JsonFetcher | None = None,
+        retry_waits: tuple[float, ...] = DEFAULT_RETRY_WAITS,
+        sleep: Callable[[float], None] = time.sleep,
     ) -> None:
         if not service_key.strip():
             raise ValueError("service_key must not be empty")
@@ -61,6 +76,8 @@ class G2BClient:
         self.page_size = page_size
         self.timeout = timeout
         self._fetcher = fetcher or self._fetch_json
+        self._retry_waits = tuple(retry_waits)
+        self._sleep = sleep
 
     def fetch_window(
         self,
@@ -126,8 +143,30 @@ class G2BClient:
                 "inqryEndDt": end,
             }
         )
-        payload = self._fetcher(f"{BASE_URL}?{query}")
+        payload = self._fetch_with_retry(f"{BASE_URL}?{query}")
         return self._parse_page(payload)
+
+    def _fetch_with_retry(self, url: str) -> Mapping[str, Any]:
+        """Fetch one page, trying again when the failure is a transient one.
+
+        Only the request is repeated. The page either arrives whole or the
+        collection fails, so completeness is judged exactly as before.
+        """
+        for wait in self._retry_waits:
+            try:
+                return self._fetcher(url)
+            except TransientCollectionError as exc:
+                # The message never carries the URL, so it is safe to log.
+                print(f"{exc}; retrying in {wait:g}s", file=sys.stderr)
+                self._sleep(wait)
+
+        try:
+            return self._fetcher(url)
+        except TransientCollectionError as exc:
+            attempts = len(self._retry_waits) + 1
+            if attempts == 1:
+                raise
+            raise CollectionError(f"{exc} (gave up after {attempts} attempts)") from exc
 
     def _fetch_json(self, url: str) -> Mapping[str, Any]:
         request = Request(url, headers={"User-Agent": "g2b-daily/0.1"})
@@ -135,18 +174,32 @@ class G2BClient:
             with urlopen(request, timeout=self.timeout) as response:
                 raw = response.read()
         except HTTPError as exc:
-            raise CollectionError(
+            # 429 and 5xx are the server's trouble; any other status means the
+            # request itself was refused, and asking again cannot help.
+            error = (
+                TransientCollectionError
+                if exc.code == 429 or exc.code >= 500
+                else CollectionError
+            )
+            raise error(
                 f"data.go.kr returned HTTP {exc.code} ({_reason_text(exc.reason, self.timeout)})"
             ) from exc
         except URLError as exc:
-            raise CollectionError(
+            raise TransientCollectionError(
                 f"data.go.kr request failed ({_reason_text(exc.reason, self.timeout)})"
+            ) from exc
+        except (OSError, HTTPException) as exc:
+            # The connection opened but the body stalled or was cut off.
+            raise TransientCollectionError(
+                f"data.go.kr response was cut short ({_reason_text(exc, self.timeout)})"
             ) from exc
 
         try:
             payload = json.loads(raw.decode("utf-8-sig"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise CollectionError("data.go.kr returned a non-JSON response") from exc
+            raise TransientCollectionError(
+                "data.go.kr returned a non-JSON response"
+            ) from exc
         if not isinstance(payload, Mapping):
             raise CollectionError("data.go.kr returned an unexpected JSON root")
         return payload

@@ -38,6 +38,19 @@ def previous_kst_date(now: datetime | None = None) -> date:
     return observed.date() - timedelta(days=1)
 
 
+def missing_snapshot_dates(output_dir: Path, last_date: date, days: int) -> list[date]:
+    """Dates among the `days` ending at `last_date` that have no snapshot yet.
+
+    Oldest first, so a run that is cut short has filled the earliest hole.
+    """
+    candidates = (last_date - timedelta(days=back) for back in range(days - 1, -1, -1))
+    return [
+        candidate
+        for candidate in candidates
+        if not (output_dir / f"{candidate.isoformat()}.jsonl").exists()
+    ]
+
+
 def query_window(target_date: date) -> tuple[str, str]:
     begin = datetime.combine(target_date, time.min).strftime("%Y%m%d%H%M")
     end = datetime.combine(target_date, time(23, 59)).strftime("%Y%m%d%H%M")

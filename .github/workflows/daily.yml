@@ -10,6 +10,10 @@ on:
         description: "Optional KST date to collect (YYYY-MM-DD)"
         required: false
         type: string
+      catch_up_days:
+        description: "Without a date: fill every missing snapshot in the last N days"
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -37,17 +41,24 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Collect a complete snapshot
+        id: collect
         shell: bash
         env:
           SNAPSHOT_DATE: ${{ inputs.snapshot_date }}
+          # A scheduled run looks back a week, so a day that failed is picked
+          # up by the next run instead of staying missing.
+          CATCH_UP_DAYS: ${{ inputs.catch_up_days || '7' }}
         run: |
           if [[ -n "$SNAPSHOT_DATE" ]]; then
             python -m g2b_daily --date "$SNAPSHOT_DATE"
           else
-            python -m g2b_daily
+            python -m g2b_daily --catch-up-days "$CATCH_UP_DAYS"
           fi
 
+      # Runs even when collection failed part-way: the dates written before
+      # the failure are complete snapshots and are kept. The job stays red.
       - name: Commit snapshot
+        if: ${{ !cancelled() && steps.collect.conclusion != 'skipped' }}
         shell: bash
         run: |
           git add snapshots
