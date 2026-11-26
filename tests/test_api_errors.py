@@ -24,7 +24,8 @@ SERVICE_KEY = "super-secret-service-key"
 
 
 def client(timeout: int = 30) -> G2BClient:
-    return G2BClient(SERVICE_KEY, page_size=1, timeout=timeout)
+    # One attempt: these tests are about what a failure says, not about retrying.
+    return G2BClient(SERVICE_KEY, page_size=1, timeout=timeout, retry_waits=())
 
 
 def failure_message(error: Exception, *, timeout: int = 30) -> str:
